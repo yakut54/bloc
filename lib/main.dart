@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:untitled/bloc/counter_bloc.dart';
+import 'package:untitled/counter_bloc/counter_bloc.dart';
+import 'package:untitled/user_bloc/user_bloc.dart';
 
 void main() {
   runApp(const MyApp());
@@ -22,34 +23,79 @@ class MyHomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bloc = CounterBloc();
-    return BlocProvider<CounterBloc>(
-      create: (context) => CounterBloc(),
+    final counterBloc = CounterBloc()..add(CounterIncEvent());
+    final userBloc = UserBloc();
+
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<CounterBloc>(
+          create: (context) => counterBloc,
+        ),
+        BlocProvider<UserBloc>(
+          create: (context) => userBloc,
+        ),
+      ],
       child: Scaffold(
         floatingActionButton: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             IconButton(
                 onPressed: () {
-                  bloc.add(CounterIncEvent());
+                  counterBloc.add(CounterIncEvent());
                 },
                 icon: const Icon(Icons.plus_one)),
             IconButton(
                 onPressed: () {
-                  bloc.add(CounterDecEvent());
+                  counterBloc.add(CounterDecEvent());
                 },
-                icon: const Icon(Icons.exposure_minus_1))
+                icon: const Icon(Icons.exposure_minus_1)),
+            IconButton(
+                onPressed: () {
+                  userBloc.add(GetUsersEvent(counterBloc.state));
+                },
+                icon: const Icon(Icons.person)),
+            IconButton(
+                onPressed: () {
+                  userBloc.add(GetJobsEvent(counterBloc.state));
+                },
+                icon: const Icon(Icons.work)),
           ],
         ),
-        body: Center(
-          child: BlocBuilder<CounterBloc, int>(
-            bloc: bloc,
-            builder: (context, state) {
-              return Text(
-                '$state',
-                style: TextStyle(fontSize: 33),
-              );
-            },
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                BlocBuilder<CounterBloc, int>(
+                  bloc: counterBloc,
+                  builder: (context, state) {
+                    return Text(
+                      '$state',
+                      style: const TextStyle(fontSize: 33),
+                    );
+                  },
+                ),
+                BlocBuilder<UserBloc, UserState>(
+                  bloc: userBloc,
+                  builder: (context, state) {
+
+                    final users = state.users;
+                    final jobs = state.jobs;
+
+                    return Column(
+                      children: [
+                        if(state.isLoading)
+                          const CircularProgressIndicator(),
+                        if(users.isNotEmpty)
+                          ...state.users.map((e) => const Icon(Icons.person)),
+                        if(jobs.isNotEmpty)
+                          ...state.jobs.map((e) => Text(e.name)),
+                      ],
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
         ),
       ),
